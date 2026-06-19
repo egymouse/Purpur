@@ -1,0 +1,19 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: egymouse <93432838+8439284@users.noreply.github.com>
+Date: Fri, 19 Jun 2026 12:53:54 +0800
+Subject: [PATCH] Fix unavailable spark-paper dependency
+
+
+diff --git a/build.gradle.kts b/build.gradle.kts
+index 535b0c6a750cc77fb9340d6e080932f3eb3bde17..5baf2552d3e96a6c2406307a8b2e216d683158e0 100644
+--- a/build.gradle.kts
++++ b/build.gradle.kts
+@@ -75,7 +75,7 @@ dependencies {
+     // Paper end - Remap reflection
+     // Paper start - spark
+     implementation("me.lucko:spark-api:0.1-20240720.200737-2")
+-    implementation("me.lucko:spark-paper:1.10.105-SNAPSHOT")
++    implementation("me.lucko:spark-paper:1.10.142") // Prism - Replace unavailable 1.10.105-SNAPSHOT
+     // Paper end - spark
+ }
+ 
