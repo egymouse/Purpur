@@ -1,0 +1,63 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: egymouse <93432838+8439284@users.noreply.github.com>
+Date: Thu, 25 Jun 2026 13:34:46 +0800
+Subject: [PATCH] Add event order
+
+
+diff --git a/src/main/java/io/papermc/paper/plugin/manager/PaperEventManager.java b/src/main/java/io/papermc/paper/plugin/manager/PaperEventManager.java
+index 7ce9ebba8ce304d1f3f21d4f15ee5f3560d7700b..8f27a1ff41286715c4539e4a0565ad076e567685 100644
+--- a/src/main/java/io/papermc/paper/plugin/manager/PaperEventManager.java
++++ b/src/main/java/io/papermc/paper/plugin/manager/PaperEventManager.java
+@@ -86,17 +86,17 @@ class PaperEventManager {
+ 
+     }
+ 
+-    public void registerEvent(@NotNull Class<? extends Event> event, @NotNull Listener listener, @NotNull EventPriority priority, @NotNull EventExecutor executor, @NotNull Plugin plugin) {
+-        this.registerEvent(event, listener, priority, executor, plugin, false);
++    public void registerEvent(@NotNull Class<? extends Event> event, @NotNull Listener listener, @NotNull EventPriority priority, final int order, @NotNull EventExecutor executor, @NotNull Plugin plugin) {
++        this.registerEvent(event, listener, priority, order, executor, plugin, false);
+     }
+ 
+-    public void registerEvent(@NotNull Class<? extends Event> event, @NotNull Listener listener, @NotNull EventPriority priority, @NotNull EventExecutor executor, @NotNull Plugin plugin, boolean ignoreCancelled) {
++    public void registerEvent(@NotNull Class<? extends Event> event, @NotNull Listener listener, @NotNull EventPriority priority, final int order, @NotNull EventExecutor executor, @NotNull Plugin plugin, boolean ignoreCancelled) {
+         if (!plugin.isEnabled()) {
+             throw new IllegalPluginAccessException("Plugin attempted to register " + event + " while not enabled");
+         }
+ 
+         executor = new TimedEventExecutor(executor, plugin, null, event);
+-        this.getEventListeners(event).register(new RegisteredListener(listener, executor, priority, plugin, ignoreCancelled));
++        this.getEventListeners(event).register(new RegisteredListener(listener, executor, priority, order, plugin, ignoreCancelled));
+     }
+ 
+     @NotNull
+@@ -183,7 +183,7 @@ class PaperEventManager {
+             }
+ 
+             EventExecutor executor = new TimedEventExecutor(EventExecutor.create(method, eventClass), plugin, method, eventClass);
+-            eventSet.add(new RegisteredListener(listener, executor, eh.priority(), plugin, eh.ignoreCancelled()));
++            eventSet.add(new RegisteredListener(listener, executor, eh.priority(), eh.order(), plugin, eh.ignoreCancelled()));
+         }
+         return ret;
+     }
+diff --git a/src/main/java/io/papermc/paper/plugin/manager/PaperPluginManagerImpl.java b/src/main/java/io/papermc/paper/plugin/manager/PaperPluginManagerImpl.java
+index 097500a59336db1bbfffcd1aa4cff7a8586e46ec..e28845d4aafe97c321187e9b778e4694e3688784 100644
+--- a/src/main/java/io/papermc/paper/plugin/manager/PaperPluginManagerImpl.java
++++ b/src/main/java/io/papermc/paper/plugin/manager/PaperPluginManagerImpl.java
+@@ -137,13 +137,13 @@ public class PaperPluginManagerImpl implements PluginManager, DependencyContext
+     }
+ 
+     @Override
+-    public void registerEvent(@NotNull Class<? extends Event> event, @NotNull Listener listener, @NotNull EventPriority priority, @NotNull EventExecutor executor, @NotNull Plugin plugin) {
+-        this.paperEventManager.registerEvent(event, listener, priority, executor, plugin);
++    public void registerEvent(@NotNull Class<? extends Event> event, @NotNull Listener listener, @NotNull EventPriority priority, final int order, @NotNull EventExecutor executor, @NotNull Plugin plugin) {
++        this.paperEventManager.registerEvent(event, listener, priority, order, executor, plugin);
+     }
+ 
+     @Override
+-    public void registerEvent(@NotNull Class<? extends Event> event, @NotNull Listener listener, @NotNull EventPriority priority, @NotNull EventExecutor executor, @NotNull Plugin plugin, boolean ignoreCancelled) {
+-        this.paperEventManager.registerEvent(event, listener, priority, executor, plugin, ignoreCancelled);
++    public void registerEvent(@NotNull Class<? extends Event> event, @NotNull Listener listener, @NotNull EventPriority priority, final int order, @NotNull EventExecutor executor, @NotNull Plugin plugin, boolean ignoreCancelled) {
++        this.paperEventManager.registerEvent(event, listener, priority, order, executor, plugin, ignoreCancelled);
+     }
+ 
+     // Permission manipulation

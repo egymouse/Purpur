@@ -1,0 +1,224 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: egymouse <93432838+8439284@users.noreply.github.com>
+Date: Thu, 25 Jun 2026 13:34:47 +0800
+Subject: [PATCH] Add event order
+
+
+diff --git a/src/main/java/org/bukkit/event/EventHandler.java b/src/main/java/org/bukkit/event/EventHandler.java
+index cc06f480b788b19d4799ba0dcf53b3640059f023..478379b7f170815162c35d545806c5560a4382d6 100644
+--- a/src/main/java/org/bukkit/event/EventHandler.java
++++ b/src/main/java/org/bukkit/event/EventHandler.java
+@@ -29,6 +29,10 @@ public @interface EventHandler {
+      */
+     EventPriority priority() default EventPriority.NORMAL;
+ 
++    //Prism start - add event order
++    int order() default 0;
++    //Prism end - add event order
++
+     /**
+      * Define if the handler ignores a cancelled event.
+      * <p>
+diff --git a/src/main/java/org/bukkit/event/HandlerList.java b/src/main/java/org/bukkit/event/HandlerList.java
+index 2292bd460ce2be113beb4ba6b4eb19350060f01c..0f136d35378b5a37b7ba957e1941dbc3db94db38 100644
+--- a/src/main/java/org/bukkit/event/HandlerList.java
++++ b/src/main/java/org/bukkit/event/HandlerList.java
+@@ -193,7 +193,11 @@ public class HandlerList {
+         if (handlers != null) return; // don't re-bake when still valid
+         List<RegisteredListener> entries = new ArrayList<RegisteredListener>();
+         for (Entry<EventPriority, ArrayList<RegisteredListener>> entry : handlerslots.entrySet()) {
+-            entries.addAll(entry.getValue());
++            //Prism start - add event order
++            ArrayList<RegisteredListener> list = new ArrayList<>(entry.getValue());
++            list.sort(java.util.Comparator.comparingInt(RegisteredListener::getOrder));
++            entries.addAll(list);
++            //Prism end - add event order
+         }
+         handlers = entries.toArray(new RegisteredListener[entries.size()]);
+     }
+diff --git a/src/main/java/org/bukkit/plugin/PluginManager.java b/src/main/java/org/bukkit/plugin/PluginManager.java
+index 47153dee66782a00b980ecf15e8774ab6f3d887d..a94307df2d0d4318566daa7c1049ef82cba8fec0 100644
+--- a/src/main/java/org/bukkit/plugin/PluginManager.java
++++ b/src/main/java/org/bukkit/plugin/PluginManager.java
+@@ -138,7 +138,7 @@ public interface PluginManager extends io.papermc.paper.plugin.PermissionManager
+      * @param executor EventExecutor to register
+      * @param plugin Plugin to register
+      */
+-    public void registerEvent(@NotNull Class<? extends Event> event, @NotNull Listener listener, @NotNull EventPriority priority, @NotNull EventExecutor executor, @NotNull Plugin plugin);
++    public void registerEvent(@NotNull Class<? extends Event> event, @NotNull Listener listener, @NotNull EventPriority priority, final int order, @NotNull EventExecutor executor, @NotNull Plugin plugin);
+ 
+     /**
+      * Registers the specified executor to the given event class
+@@ -150,7 +150,7 @@ public interface PluginManager extends io.papermc.paper.plugin.PermissionManager
+      * @param plugin Plugin to register
+      * @param ignoreCancelled Whether to pass cancelled events or not
+      */
+-    public void registerEvent(@NotNull Class<? extends Event> event, @NotNull Listener listener, @NotNull EventPriority priority, @NotNull EventExecutor executor, @NotNull Plugin plugin, boolean ignoreCancelled);
++    public void registerEvent(@NotNull Class<? extends Event> event, @NotNull Listener listener, @NotNull EventPriority priority, final int order, @NotNull EventExecutor executor, @NotNull Plugin plugin, boolean ignoreCancelled);
+ 
+     /**
+      * Enables the specified plugin
+diff --git a/src/main/java/org/bukkit/plugin/RegisteredListener.java b/src/main/java/org/bukkit/plugin/RegisteredListener.java
+index 3b3d9642a8d63798dc28f2f8df77f0466451cbff..dbde9f3d272038ba34a06546c9218a7453defe14 100644
+--- a/src/main/java/org/bukkit/plugin/RegisteredListener.java
++++ b/src/main/java/org/bukkit/plugin/RegisteredListener.java
+@@ -13,17 +13,23 @@ import org.jetbrains.annotations.NotNull;
+ public class RegisteredListener {
+     private final Listener listener;
+     private final EventPriority priority;
++    //Prism start - add event order
++    private final int order;
++    //Prism end - add event order
+     private final Plugin plugin;
+     private final EventExecutor executor;
+     private final boolean ignoreCancelled;
+ 
+-    public RegisteredListener(@NotNull final Listener listener, @NotNull final EventExecutor executor, @NotNull final EventPriority priority, @NotNull final Plugin plugin, final boolean ignoreCancelled) {
++    //Prism start - add event order
++    public RegisteredListener(@NotNull final Listener listener, @NotNull final EventExecutor executor, @NotNull final EventPriority priority, final int order, @NotNull final Plugin plugin, final boolean ignoreCancelled) {
+         this.listener = listener;
+         this.priority = priority;
+         this.plugin = plugin;
+         this.executor = executor;
+         this.ignoreCancelled = ignoreCancelled;
++        this.order = order;
+     }
++    //Prism end - add event order
+ 
+     /**
+      * Gets the listener for this registration
+@@ -55,6 +61,12 @@ public class RegisteredListener {
+         return priority;
+     }
+ 
++    //Prism start - add event order
++    public int getOrder() {
++        return order;
++    }
++    //Prism end - add event order
++
+     /**
+      * Calls the event executor
+      *
+@@ -97,6 +109,7 @@ public class RegisteredListener {
+             + "\", listener=\"" + this.listener
+             + "\", executor=\"" + this.executor
+             + "\", priority=\"" + this.priority.name() + " (" + this.priority.getSlot() + ")"
++            + ", order=\"" + this.order + "\""
+             + "\", ignoringCancelled=" + this.ignoreCancelled
+             + "}";
+     }
+diff --git a/src/main/java/org/bukkit/plugin/SimplePluginManager.java b/src/main/java/org/bukkit/plugin/SimplePluginManager.java
+index e8ba4f1108f2548a487877027e37d81fc150e042..124f29dd6db4dfbfaac338730b8fdcba49188d5c 100644
+--- a/src/main/java/org/bukkit/plugin/SimplePluginManager.java
++++ b/src/main/java/org/bukkit/plugin/SimplePluginManager.java
+@@ -696,10 +696,11 @@ public final class SimplePluginManager implements PluginManager {
+     }
+ 
+     @Override
+-    public void registerEvent(@NotNull Class<? extends Event> event, @NotNull Listener listener, @NotNull EventPriority priority, @NotNull EventExecutor executor, @NotNull Plugin plugin) {
+-        registerEvent(event, listener, priority, executor, plugin, false);
++    public void registerEvent(@NotNull Class<? extends Event> event, @NotNull Listener listener, @NotNull EventPriority priority, final int order, @NotNull EventExecutor executor, @NotNull Plugin plugin) {
++        registerEvent(event, listener, priority, order, executor, plugin, false);
+     }
+ 
++    //Prism start - add event order
+     /**
+      * Registers the given event to the specified listener using a directly
+      * passed EventExecutor
+@@ -707,30 +708,27 @@ public final class SimplePluginManager implements PluginManager {
+      * @param event Event class to register
+      * @param listener PlayerListener to register
+      * @param priority Priority of this event
++     * @param order order of this event
+      * @param executor EventExecutor to register
+      * @param plugin Plugin to register
+      * @param ignoreCancelled Do not call executor if event was already
+      *     cancelled
+      */
+     @Override
+-    public void registerEvent(@NotNull Class<? extends Event> event, @NotNull Listener listener, @NotNull EventPriority priority, @NotNull EventExecutor executor, @NotNull Plugin plugin, boolean ignoreCancelled) {
++    public void registerEvent(@NotNull Class<? extends Event> event, @NotNull Listener listener, @NotNull EventPriority priority, final int order, @NotNull EventExecutor executor, @NotNull Plugin plugin, boolean ignoreCancelled) {
+         Preconditions.checkArgument(listener != null, "Listener cannot be null");
+         Preconditions.checkArgument(priority != null, "Priority cannot be null");
+         Preconditions.checkArgument(executor != null, "Executor cannot be null");
+         Preconditions.checkArgument(plugin != null, "Plugin cannot be null");
+-        if (true) {this.paperPluginManager.registerEvent(event, listener, priority, executor, plugin, ignoreCancelled); return;} // Paper
++        if (true) {this.paperPluginManager.registerEvent(event, listener, priority, order, executor, plugin, ignoreCancelled); return;} // Paper
+ 
+         if (!plugin.isEnabled()) {
+             throw new IllegalPluginAccessException("Plugin attempted to register " + event + " while not enabled");
+         }
+ 
+         executor = new co.aikar.timings.TimedEventExecutor(executor, plugin, null, event); // Paper
+-        if (false) { // Spigot - RL handles useTimings check now // Paper
+-            getEventListeners(event).register(new TimedRegisteredListener(listener, executor, priority, plugin, ignoreCancelled));
+-        } else {
+-            getEventListeners(event).register(new RegisteredListener(listener, executor, priority, plugin, ignoreCancelled));
+-        }
+     }
++    //Prism end - add event order
+ 
+     @NotNull
+     private HandlerList getEventListeners(@NotNull Class<? extends Event> type) {
+diff --git a/src/main/java/org/bukkit/plugin/TimedRegisteredListener.java b/src/main/java/org/bukkit/plugin/TimedRegisteredListener.java
+index 1d76e30b82ca56bb4cf3b9a33f5a129ab829e3f0..32cf6860a6ddf93bdcdc08e11e04d627fece549c 100644
+--- a/src/main/java/org/bukkit/plugin/TimedRegisteredListener.java
++++ b/src/main/java/org/bukkit/plugin/TimedRegisteredListener.java
+@@ -16,8 +16,8 @@ public class TimedRegisteredListener extends RegisteredListener {
+     private Class<? extends Event> eventClass;
+     private boolean multiple = false;
+ 
+-    public TimedRegisteredListener(@NotNull final Listener pluginListener, @NotNull final EventExecutor eventExecutor, @NotNull final EventPriority eventPriority, @NotNull final Plugin registeredPlugin, final boolean listenCancelled) {
+-        super(pluginListener, eventExecutor, eventPriority, registeredPlugin, listenCancelled);
++    public TimedRegisteredListener(@NotNull final Listener pluginListener, @NotNull final EventExecutor eventExecutor, @NotNull final EventPriority eventPriority, final int order, @NotNull final Plugin registeredPlugin, final boolean listenCancelled) {
++        super(pluginListener, eventExecutor, eventPriority, order, registeredPlugin, listenCancelled);
+     }
+ 
+     @Override
+diff --git a/src/main/java/org/bukkit/plugin/java/JavaPluginLoader.java b/src/main/java/org/bukkit/plugin/java/JavaPluginLoader.java
+index 0c6ca7588fb3d6b6497ddf032fe75e5c6c9719e5..0f039610f7a7eddb975c39ed48768b5c468b4131 100644
+--- a/src/main/java/org/bukkit/plugin/java/JavaPluginLoader.java
++++ b/src/main/java/org/bukkit/plugin/java/JavaPluginLoader.java
+@@ -254,6 +254,7 @@ public final class JavaPluginLoader implements PluginLoader {
+         for (final Method method : methods) {
+             final EventHandler eh = method.getAnnotation(EventHandler.class);
+             if (eh == null) continue;
++            final int order = eh.order();
+             // Do not register bridge or synthetic methods to avoid event duplication
+             // Fixes SPIGOT-893
+             if (method.isBridge() || method.isSynthetic()) {
+@@ -309,11 +310,6 @@ public final class JavaPluginLoader implements PluginLoader {
+                     }
+                 }
+             }, plugin, method, eventClass); // Paper
+-            if (false) { // Spigot - RL handles useTimings check now
+-                eventSet.add(new TimedRegisteredListener(listener, executor, eh.priority(), plugin, eh.ignoreCancelled()));
+-            } else {
+-                eventSet.add(new RegisteredListener(listener, executor, eh.priority(), plugin, eh.ignoreCancelled()));
+-            }
+         }
+         return ret;
+     }
+diff --git a/src/test/java/org/bukkit/plugin/TimedRegisteredListenerTest.java b/src/test/java/org/bukkit/plugin/TimedRegisteredListenerTest.java
+index 9ed416ed57676c845833736f93ed6088513c6da4..5f8e3184086b8e54965ac6d715aa89783304dbd1 100644
+--- a/src/test/java/org/bukkit/plugin/TimedRegisteredListenerTest.java
++++ b/src/test/java/org/bukkit/plugin/TimedRegisteredListenerTest.java
+@@ -27,7 +27,7 @@ public class TimedRegisteredListenerTest {
+         PlayerMoveEvent moveEvent = new PlayerMoveEvent(null, null, null);
+         BlockBreakEvent breakEvent = new BlockBreakEvent(null, null);
+ 
+-        TimedRegisteredListener trl = new TimedRegisteredListener(listener, executor, EventPriority.NORMAL, plugin, false);
++        TimedRegisteredListener trl = new TimedRegisteredListener(listener, executor, EventPriority.NORMAL, 0, plugin, false);
+ 
+         // Ensure that the correct event type is reported for a single event
+         trl.callEvent(interactEvent);
+@@ -45,7 +45,7 @@ public class TimedRegisteredListenerTest {
+         trl.callEvent(breakEvent);
+         assertThat(trl.getEventClass(), is((Object) Event.class));
+ 
+-        trl = new TimedRegisteredListener(listener, executor, EventPriority.NORMAL, plugin, false);
++        trl = new TimedRegisteredListener(listener, executor, EventPriority.NORMAL, 0, plugin, false);
+ 
+         trl.callEvent(breakEvent);
+         assertThat(trl.getEventClass(), is((Object) BlockBreakEvent.class));
