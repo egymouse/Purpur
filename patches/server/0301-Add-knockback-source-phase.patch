@@ -1,0 +1,113 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: egymouse <93432838+8439284@users.noreply.github.com>
+Date: Fri, 26 Jun 2026 23:00:31 +0800
+Subject: [PATCH] Add knockback source phase
+
+
+diff --git a/src/main/java/net/minecraft/world/entity/LivingEntity.java b/src/main/java/net/minecraft/world/entity/LivingEntity.java
+index d0bd69b1f131bc2ce50dcbb947d5ff3fc13a4363..4aabcacadbf4ef4db76427f097ab229072b346ca 100644
+--- a/src/main/java/net/minecraft/world/entity/LivingEntity.java
++++ b/src/main/java/net/minecraft/world/entity/LivingEntity.java
+@@ -11,6 +11,7 @@ import com.mojang.datafixers.util.Pair;
+ import com.mojang.logging.LogUtils;
+ import com.mojang.serialization.DataResult;
+ import com.mojang.serialization.Dynamic;
++import io.papermc.paper.event.entity.EntityKnockbackEvent;
+ import it.unimi.dsi.fastutil.doubles.DoubleDoubleImmutablePair;
+ import it.unimi.dsi.fastutil.objects.Reference2ObjectArrayMap;
+ import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
+@@ -132,6 +133,7 @@ import net.minecraft.world.phys.HitResult;
+ import net.minecraft.world.phys.Vec3;
+ import net.minecraft.world.scores.PlayerTeam;
+ import net.minecraft.world.scores.Scoreboard;
++import org.bukkit.Bukkit;
+ import org.slf4j.Logger;
+ 
+ // CraftBukkit start
+@@ -148,7 +150,6 @@ import org.bukkit.entity.Player;
+ import org.bukkit.event.entity.ArrowBodyCountChangeEvent;
+ import org.bukkit.event.entity.EntityDamageEvent;
+ import org.bukkit.event.entity.EntityDamageEvent.DamageModifier;
+-import org.bukkit.event.entity.EntityKnockbackEvent;
+ import org.bukkit.event.entity.EntityPotionEffectEvent;
+ import org.bukkit.event.entity.EntityRegainHealthEvent;
+ import org.bukkit.event.entity.EntityRemoveEvent;
+@@ -2039,7 +2040,12 @@ public abstract class LivingEntity extends Entity implements Attackable {
+         this.knockback(strength, x, z, null, io.papermc.paper.event.entity.EntityKnockbackEvent.Cause.UNKNOWN); // Paper - knockback events
+     }
+ 
+-    public void knockback(double d0, double d1, double d2, @Nullable Entity attacker, io.papermc.paper.event.entity.EntityKnockbackEvent.Cause cause) { // Paper - knockback events
++
++    public void knockback(double d0, double d1, double d2, @Nullable Entity attacker, io.papermc.paper.event.entity.EntityKnockbackEvent.Cause cause) {
++        knockback(d0, d1, d2, attacker, cause, EntityKnockbackEvent.SourcePhase.DEFAULT);
++    }
++    public void knockback(double d0, double d1, double d2, @Nullable Entity attacker, io.papermc.paper.event.entity.EntityKnockbackEvent.Cause cause, EntityKnockbackEvent.SourcePhase sourcePhase) { // Paper - knockback events
++
+         d0 *= 1.0D - this.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE);
+         if (true || d0 > 0.0D) { // CraftBukkit - Call event even when force is 0
+             //this.hasImpulse = true; // CraftBukkit - Move down
+@@ -2055,7 +2061,7 @@ public abstract class LivingEntity extends Entity implements Attackable {
+             // Paper start - knockback events
+             Vec3 finalVelocity = new Vec3(vec3d.x / 2.0D - vec3d1.x, this.onGround() ? Math.min(0.4D, vec3d.y / 2.0D + d0) : vec3d.y, vec3d.z / 2.0D - vec3d1.z);
+             Vec3 diff = finalVelocity.subtract(vec3d);
+-            io.papermc.paper.event.entity.EntityKnockbackEvent event = CraftEventFactory.callEntityKnockbackEvent((org.bukkit.craftbukkit.entity.CraftLivingEntity) this.getBukkitEntity(), attacker, attacker, cause, d0, diff);
++            io.papermc.paper.event.entity.EntityKnockbackEvent event = CraftEventFactory.callEntityKnockbackEvent((org.bukkit.craftbukkit.entity.CraftLivingEntity) this.getBukkitEntity(), attacker, attacker, cause, sourcePhase, d0, diff);
+             // Paper end - knockback events
+             if (event.isCancelled()) {
+                 return;
+diff --git a/src/main/java/net/minecraft/world/entity/player/Player.java b/src/main/java/net/minecraft/world/entity/player/Player.java
+index 330b21946564e6a7b463a258c02fee3f91e0f057..45cc785ea7edb55a4dfc3a06bc1f11e7c84c9e13 100644
+--- a/src/main/java/net/minecraft/world/entity/player/Player.java
++++ b/src/main/java/net/minecraft/world/entity/player/Player.java
+@@ -17,6 +17,7 @@ import java.util.OptionalInt;
+ import java.util.function.Predicate;
+ import javax.annotation.Nonnull;
+ import javax.annotation.Nullable;
++import io.papermc.paper.event.entity.EntityKnockbackEvent;
+ import net.minecraft.Util;
+ import net.minecraft.advancements.CriteriaTriggers;
+ import net.minecraft.core.BlockPos;
+@@ -122,7 +123,6 @@ import org.bukkit.event.entity.CreatureSpawnEvent;
+ import org.bukkit.event.entity.EntityCombustByEntityEvent;
+ import org.bukkit.event.entity.EntityDamageEvent;
+ import org.bukkit.event.entity.EntityExhaustionEvent;
+-import org.bukkit.event.entity.EntityKnockbackEvent;
+ import org.bukkit.event.entity.EntityRemoveEvent;
+ import org.bukkit.event.player.PlayerDropItemEvent;
+ import org.bukkit.event.player.PlayerVelocityEvent;
+@@ -1389,7 +1389,7 @@ public abstract class Player extends LivingEntity {
+                             if (target instanceof LivingEntity) {
+                                 LivingEntity entityliving1 = (LivingEntity) target;
+ 
+-                                entityliving1.knockback((double) (f5 * 0.5F), (double) Mth.sin(this.getYRot() * 0.017453292F), (double) (-Mth.cos(this.getYRot() * 0.017453292F)), this, io.papermc.paper.event.entity.EntityKnockbackEvent.Cause.ENTITY_ATTACK); // Paper - knockback events
++                                entityliving1.knockback((double) (f5 * 0.5F), (double) Mth.sin(this.getYRot() * 0.017453292F), (double) (-Mth.cos(this.getYRot() * 0.017453292F)), this, io.papermc.paper.event.entity.EntityKnockbackEvent.Cause.ENTITY_ATTACK, EntityKnockbackEvent.SourcePhase.ADDITIONAL_KNOCKBACK); // Paper - knockback events
+                             } else {
+                                 target.push((double) (-Mth.sin(this.getYRot() * 0.017453292F) * f5 * 0.5F), 0.1D, (double) (Mth.cos(this.getYRot() * 0.017453292F) * f5 * 0.5F), this); // Paper - Add EntityKnockbackByEntityEvent and EntityPushedByEntityAttackEvent
+                             }
+diff --git a/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java b/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java
+index 858c6c860d9b8aaa1d3f9f77a9e410726239d7cc..50336f4e50385622f94fbd3a24c684d45b9cc2a5 100644
+--- a/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java
++++ b/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java
+@@ -2151,8 +2151,12 @@ public class CraftEventFactory {
+         return event;
+     }
+ 
+-    // Paper start - replace knockback events
+     public static io.papermc.paper.event.entity.EntityKnockbackEvent callEntityKnockbackEvent(CraftLivingEntity entity, Entity pusher, Entity attacker, io.papermc.paper.event.entity.EntityKnockbackEvent.Cause cause, double force, Vec3 knockback) {
++        return callEntityKnockbackEvent(entity, pusher, attacker, cause, io.papermc.paper.event.entity.EntityKnockbackEvent.SourcePhase.DEFAULT, force, knockback);
++    }
++
++    // Paper start - replace knockback events
++    public static io.papermc.paper.event.entity.EntityKnockbackEvent callEntityKnockbackEvent(CraftLivingEntity entity, Entity pusher, Entity attacker, io.papermc.paper.event.entity.EntityKnockbackEvent.Cause cause, io.papermc.paper.event.entity.EntityKnockbackEvent.SourcePhase sourcePhase, double force, Vec3 knockback) {
+         Vector apiKnockback = CraftVector.toBukkit(knockback);
+ 
+         final Vector currentVelocity = entity.getVelocity();
+@@ -2169,7 +2173,7 @@ public class CraftEventFactory {
+         final io.papermc.paper.event.entity.EntityKnockbackEvent event;
+         apiKnockback = legacyEvent.getFinalKnockback().subtract(currentVelocity);
+         if (attacker != null) {
+-            event = new com.destroystokyo.paper.event.entity.EntityKnockbackByEntityEvent(entity, attacker.getBukkitEntity(), cause, (float) force, apiKnockback);
++            event = new com.destroystokyo.paper.event.entity.EntityKnockbackByEntityEvent(entity, attacker.getBukkitEntity(), cause, sourcePhase, (float) force, apiKnockback);
+         } else {
+             event = new io.papermc.paper.event.entity.EntityKnockbackEvent(entity, cause, apiKnockback);
+         }

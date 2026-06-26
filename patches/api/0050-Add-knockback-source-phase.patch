@@ -1,0 +1,44 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: egymouse <93432838+8439284@users.noreply.github.com>
+Date: Fri, 26 Jun 2026 23:00:32 +0800
+Subject: [PATCH] Add knockback source phase
+
+
+diff --git a/src/main/java/com/destroystokyo/paper/event/entity/EntityKnockbackByEntityEvent.java b/src/main/java/com/destroystokyo/paper/event/entity/EntityKnockbackByEntityEvent.java
+index 6f376e1ac0f2f44255993b3d5b144f5559d13cc3..ba81c5b94922d1900e44ad03e1504061aee0dd4d 100644
+--- a/src/main/java/com/destroystokyo/paper/event/entity/EntityKnockbackByEntityEvent.java
++++ b/src/main/java/com/destroystokyo/paper/event/entity/EntityKnockbackByEntityEvent.java
+@@ -17,10 +17,18 @@ public class EntityKnockbackByEntityEvent extends EntityPushedByEntityAttackEven
+ 
+     private final float knockbackStrength;
+ 
++    private final SourcePhase sourcePhase;
++
++    public SourcePhase getSourcePhase() {
++        return this.sourcePhase;
++    }
++
++
+     @ApiStatus.Internal
+-    public EntityKnockbackByEntityEvent(final LivingEntity entity, final Entity hitBy, final EntityKnockbackEvent.Cause cause, final float knockbackStrength, final Vector knockback) {
++    public EntityKnockbackByEntityEvent(final LivingEntity entity, final Entity hitBy, final EntityKnockbackEvent.Cause cause, final EntityKnockbackEvent.SourcePhase sourcePhase, final float knockbackStrength, final Vector knockback) {
+         super(entity, cause, hitBy, knockback);
+         this.knockbackStrength = knockbackStrength;
++        this.sourcePhase = sourcePhase;
+     }
+ 
+     /**
+diff --git a/src/main/java/io/papermc/paper/event/entity/EntityKnockbackEvent.java b/src/main/java/io/papermc/paper/event/entity/EntityKnockbackEvent.java
+index bc120d4928dc41ea827e2a06f7d30d0e3d484ce0..5b33284b659cea358c29009fb1eb28012058af9d 100644
+--- a/src/main/java/io/papermc/paper/event/entity/EntityKnockbackEvent.java
++++ b/src/main/java/io/papermc/paper/event/entity/EntityKnockbackEvent.java
+@@ -114,4 +114,9 @@ public class EntityKnockbackEvent extends EntityEvent implements Cancellable {
+          */
+         UNKNOWN
+     }
++
++    public enum SourcePhase {
++        DEFAULT,
++        ADDITIONAL_KNOCKBACK
++    }
+ }
