@@ -1,0 +1,19 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: egymouse <93432838+8439284@users.noreply.github.com>
+Date: Thu, 2 Jul 2026 01:00:46 +0800
+Subject: [PATCH] Allow crits while sprinting
+
+
+diff --git a/src/main/java/net/minecraft/world/entity/player/Player.java b/src/main/java/net/minecraft/world/entity/player/Player.java
+index 45cc785ea7edb55a4dfc3a06bc1f11e7c84c9e13..4b3d59efe11668e6f5a6388d599d11868b50ee36 100644
+--- a/src/main/java/net/minecraft/world/entity/player/Player.java
++++ b/src/main/java/net/minecraft/world/entity/player/Player.java
+@@ -1351,7 +1351,7 @@ public abstract class Player extends LivingEntity {
+                     }
+ 
+                     f += itemstack.getItem().getAttackDamageBonus(target, f, damagesource);
+-                    boolean flag2 = flag && this.fallDistance > 0.0F && !this.onGround() && !this.onClimbable() && !this.isInWater() && !this.hasEffect(MobEffects.BLINDNESS) && !this.isPassenger() && target instanceof LivingEntity && !this.isSprinting();
++                    boolean flag2 = flag && this.fallDistance > 0.0F && !this.onGround() && !this.onClimbable() && !this.isInWater() && !this.hasEffect(MobEffects.BLINDNESS) && !this.isPassenger() && target instanceof LivingEntity;
+ 
+                     flag2 = flag2 && !this.level().paperConfig().entities.behavior.disablePlayerCrits; // Paper - Toggleable player crits
+                     if (flag2) {
