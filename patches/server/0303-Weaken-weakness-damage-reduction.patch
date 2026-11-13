@@ -1,0 +1,34 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: egymouse <93432838+egymouse@users.noreply.github.com>
+Date: Sun, 15 Nov 2026 17:04:33 +0800
+Subject: [PATCH] Weaken weakness damage reduction
+
+
+diff --git a/src/main/java/net/minecraft/world/effect/MobEffects.java b/src/main/java/net/minecraft/world/effect/MobEffects.java
+index cc5f62f7479a5c29a9851e9c3d990c4c259d13d4..4e70e88a3a4108729f235642ac0f415635b17641 100644
+--- a/src/main/java/net/minecraft/world/effect/MobEffects.java
++++ b/src/main/java/net/minecraft/world/effect/MobEffects.java
+@@ -68,13 +68,15 @@ public class MobEffects {
+     public static final Holder<MobEffect> BLINDNESS = register("blindness", new MobEffect(MobEffectCategory.HARMFUL, 2039587));
+     public static final Holder<MobEffect> NIGHT_VISION = register("night_vision", new MobEffect(MobEffectCategory.BENEFICIAL, 12779366));
+     public static final Holder<MobEffect> HUNGER = register("hunger", new HungerMobEffect(MobEffectCategory.HARMFUL, 5797459));
++    // Prism start - weaken vanilla weakness damage reduction from -4.0 to -0.5
+     public static final Holder<MobEffect> WEAKNESS = register(
+         "weakness",
+         new MobEffect(MobEffectCategory.HARMFUL, 4738376)
+             .addAttributeModifier(
+-                Attributes.ATTACK_DAMAGE, ResourceLocation.withDefaultNamespace("effect.weakness"), -4.0, AttributeModifier.Operation.ADD_VALUE
++                Attributes.ATTACK_DAMAGE, ResourceLocation.withDefaultNamespace("effect.weakness"), -0.5, AttributeModifier.Operation.ADD_VALUE
+             )
+     );
++    // Prism end
+     public static final Holder<MobEffect> POISON = register("poison", new PoisonMobEffect(MobEffectCategory.HARMFUL, 8889187));
+     public static final Holder<MobEffect> WITHER = register("wither", new WitherMobEffect(MobEffectCategory.HARMFUL, 7561558));
+     public static final Holder<MobEffect> HEALTH_BOOST = register(
+@@ -134,4 +136,4 @@ public class MobEffects {
+     public static Holder<MobEffect> bootstrap(Registry<MobEffect> registry) {
+         return MOVEMENT_SPEED;
+     }
+-}
++}
+\ No newline at end of file
