@@ -1,0 +1,20 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: egymouse <93432838+egymouse@users.noreply.github.com>
+Date: Sun, 15 Nov 2026 15:08:28 +0800
+Subject: [PATCH] Disabled armor toughness
+
+
+diff --git a/src/main/java/net/minecraft/world/damagesource/CombatRules.java b/src/main/java/net/minecraft/world/damagesource/CombatRules.java
+index ffd009bca3fdbfd0b14df78072ef8d472a57cd65..1bb7443abf6987d2792f2882b62b97779826d9a7 100644
+--- a/src/main/java/net/minecraft/world/damagesource/CombatRules.java
++++ b/src/main/java/net/minecraft/world/damagesource/CombatRules.java
+@@ -14,8 +14,7 @@ public class CombatRules {
+     private static final int NUM_ARMOR_ITEMS = 4;
+ 
+     public static float getDamageAfterAbsorb(LivingEntity armorWearer, float damageAmount, DamageSource damageSource, float armor, float armorToughness) {
+-        float f = 2.0F + armorToughness / 4.0F;
+-        float g = Mth.clamp(armor - damageAmount / f, armor * 0.2F, org.purpurmc.purpur.PurpurConfig.limitArmor ? 20F : Float.MAX_VALUE); // Purpur
++        float g = Math.min(armor, org.purpurmc.purpur.PurpurConfig.limitArmor ? 20F : Float.MAX_VALUE);
+         float h = g / 25.0F;
+         ItemStack itemStack = damageSource.getWeaponItem();
+         float i;
