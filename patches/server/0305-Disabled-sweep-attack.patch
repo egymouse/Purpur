@@ -1,0 +1,19 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: egymouse <93432838+egymouse@users.noreply.github.com>
+Date: Sun, 15 Nov 2026 16:22:40 +0800
+Subject: [PATCH] Disabled sweep attack
+
+
+diff --git a/src/main/java/net/minecraft/world/entity/player/Player.java b/src/main/java/net/minecraft/world/entity/player/Player.java
+index 4b3d59efe11668e6f5a6388d599d11868b50ee36..1ca87f644b7c6946719a0427bf48a3944e08b88a 100644
+--- a/src/main/java/net/minecraft/world/entity/player/Player.java
++++ b/src/main/java/net/minecraft/world/entity/player/Player.java
+@@ -1404,7 +1404,7 @@ public abstract class Player extends LivingEntity {
+ 
+                         LivingEntity entityliving2;
+ 
+-                        if (flag3) {
++                        if (false && flag3) { //Disable sweep attack
+                             float f6 = 1.0F + (float) this.getAttributeValue(Attributes.SWEEPING_DAMAGE_RATIO) * f;
+                             List<LivingEntity> list = this.level().getEntitiesOfClass(LivingEntity.class, target.getBoundingBox().inflate(1.0D, 0.25D, 1.0D));
+                             Iterator iterator = list.iterator();
