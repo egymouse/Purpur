@@ -1,0 +1,22 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: egymouse <93432838+egymouse@users.noreply.github.com>
+Date: Tue, 17 Nov 2026 21:48:08 +0800
+Subject: [PATCH] Add getRunnable in BukkitTask
+
+
+diff --git a/src/main/java/org/bukkit/craftbukkit/scheduler/CraftTask.java b/src/main/java/org/bukkit/craftbukkit/scheduler/CraftTask.java
+index 8f181e03eda734b18f8c9ee80ee6e45f8689d178..5a193ae42cde644ea7eddf8ab4d18e90725a8c1c 100644
+--- a/src/main/java/org/bukkit/craftbukkit/scheduler/CraftTask.java
++++ b/src/main/java/org/bukkit/craftbukkit/scheduler/CraftTask.java
+@@ -132,6 +132,11 @@ public class CraftTask implements BukkitTask, Runnable { // Spigot
+         Bukkit.getScheduler().cancelTask(this.id);
+     }
+ 
++    @Override
++    public Runnable getRunnable() {
++        return this.rTask;
++    }
++
+     /**
+      * This method properly sets the status to cancelled, synchronizing when required.
+      *

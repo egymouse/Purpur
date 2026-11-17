@@ -1,0 +1,32 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: egymouse <93432838+egymouse@users.noreply.github.com>
+Date: Tue, 17 Nov 2026 21:48:09 +0800
+Subject: [PATCH] Add getRunnable in BukkitTask
+
+
+diff --git a/src/main/java/org/bukkit/scheduler/BukkitTask.java b/src/main/java/org/bukkit/scheduler/BukkitTask.java
+index 51251584937f2d184c88d5e1394125ec53779083..82d2b410380c46c6d4645da95d2dcb93876f81b0 100644
+--- a/src/main/java/org/bukkit/scheduler/BukkitTask.java
++++ b/src/main/java/org/bukkit/scheduler/BukkitTask.java
+@@ -2,6 +2,7 @@ package org.bukkit.scheduler;
+ 
+ import org.bukkit.plugin.Plugin;
+ import org.jetbrains.annotations.NotNull;
++import org.jetbrains.annotations.Nullable;
+ 
+ /**
+  * Represents a task being executed by the scheduler
+@@ -41,4 +42,13 @@ public interface BukkitTask {
+      * Will attempt to cancel this task.
+      */
+     public void cancel();
++
++    /**
++     * Returns the {@link Runnable} this task will run.
++     *
++     * @return the runnable, or {@code null} if this task is not backed by a
++     * {@link Runnable}
++     */
++    @Nullable
++    public Runnable getRunnable();
+ }
