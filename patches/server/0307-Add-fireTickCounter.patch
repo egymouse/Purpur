@@ -1,0 +1,107 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: egymouse <93432838+egymouse@users.noreply.github.com>
+Date: Wed, 18 Nov 2026 21:27:24 +0800
+Subject: [PATCH] Add fireTickCounter
+
+
+diff --git a/src/main/java/net/minecraft/server/level/ServerPlayer.java b/src/main/java/net/minecraft/server/level/ServerPlayer.java
+index 4f72ce384f4c0dbae98effa89aed5c3bb802e635..1cece705bb281edf43aecaac7db65153b431fc8f 100644
+--- a/src/main/java/net/minecraft/server/level/ServerPlayer.java
++++ b/src/main/java/net/minecraft/server/level/ServerPlayer.java
+@@ -3040,7 +3040,7 @@ public class ServerPlayer extends net.minecraft.world.entity.player.Player imple
+         this.setHealth(this.getMaxHealth());
+         this.stopUsingItem(); // CraftBukkit - SPIGOT-6682: Clear active item on reset
+         this.setAirSupply(this.getMaxAirSupply()); // Paper - Reset players airTicks on respawn
+-        this.setRemainingFireTicks(0);
++        this.clearFire();
+         this.fallDistance = 0;
+         this.foodData = new FoodData(this);
+         this.experienceLevel = this.newLevel;
+diff --git a/src/main/java/net/minecraft/world/entity/Entity.java b/src/main/java/net/minecraft/world/entity/Entity.java
+index 7aadcaa1785c6560eb1ce2f1179225facca47d84..cf7744f03c7dfbcfe95c96f5812092d0150cafe6 100644
+--- a/src/main/java/net/minecraft/world/entity/Entity.java
++++ b/src/main/java/net/minecraft/world/entity/Entity.java
+@@ -134,7 +134,6 @@ import net.minecraft.world.scores.Team;
+ import org.slf4j.Logger;
+ import org.bukkit.Bukkit;
+ import org.bukkit.Location;
+-import org.bukkit.Server;
+ import org.bukkit.block.BlockFace;
+ import org.bukkit.command.CommandSender;
+ import org.bukkit.entity.Hanging;
+@@ -348,6 +347,7 @@ public abstract class Entity implements SyncedDataHolder, Nameable, EntityAccess
+     public final RandomSource random;
+     public int tickCount;
+     private int remainingFireTicks;
++    private int fireTickCounter;
+     public boolean wasTouchingWater;
+     protected Object2DoubleMap<TagKey<Fluid>> fluidHeight;
+     protected boolean wasEyeInWater;
+@@ -923,7 +923,8 @@ public abstract class Entity implements SyncedDataHolder, Nameable, EntityAccess
+                     this.clearFire();
+                 }
+             } else {
+-                if (this.remainingFireTicks % 20 == 0 && !this.isInLava()) {
++                this.setFireTickCounter(this.getFireTickCounter() + 1);
++                if (this.getFireTickCounter() % 20 == 0 && !this.isInLava()) {
+                     this.hurt(this.damageSources().onFire(), 1.0F);
+                 }
+ 
+@@ -1060,8 +1061,23 @@ public abstract class Entity implements SyncedDataHolder, Nameable, EntityAccess
+         return this.remainingFireTicks;
+     }
+ 
++
++    public void setFireTickCounter(int fireTickCounter) {
++        this.fireTickCounter = fireTickCounter;
++    }
++
++    public int getFireTickCounter() {
++        return this.fireTickCounter;
++    }
++
++    public void resetFire() {
++        this.setFireTickCounter(0);
++        this.setRemainingFireTicks(-this.getFireImmuneTicks());
++    }
++
+     public void clearFire() {
+         this.setRemainingFireTicks(0);
++        this.setFireTickCounter(0);
+     }
+ 
+     protected void onBelowWorld() {
+@@ -1312,7 +1328,7 @@ public abstract class Entity implements SyncedDataHolder, Nameable, EntityAccess
+                     return iblockdata2.is(BlockTags.FIRE) || iblockdata2.is(Blocks.LAVA);
+                 })) {
+                     if (this.remainingFireTicks <= 0) {
+-                        this.setRemainingFireTicks(-this.getFireImmuneTicks());
++                        this.resetFire();
+                     }
+ 
+                     if (this.wasOnFire && (this.isInPowderSnow || this.isInWaterRainOrBubble())) {
+@@ -1321,7 +1337,7 @@ public abstract class Entity implements SyncedDataHolder, Nameable, EntityAccess
+                 }
+ 
+                 if (this.isOnFire() && (this.isInPowderSnow || this.isInWaterRainOrBubble())) {
+-                    this.setRemainingFireTicks(-this.getFireImmuneTicks());
++                    this.resetFire();
+                 }
+ 
+                 //this.level().getProfiler().pop(); // Purpur
+@@ -2470,6 +2486,7 @@ public abstract class Entity implements SyncedDataHolder, Nameable, EntityAccess
+             nbttagcompound.put("Rotation", this.newFloatList(this.getYRot(), this.getXRot()));
+             nbttagcompound.putFloat("FallDistance", this.fallDistance);
+             nbttagcompound.putShort("Fire", (short) this.remainingFireTicks);
++            nbttagcompound.putInt("FireCounter", this.getFireTickCounter());
+             nbttagcompound.putShort("Air", (short) this.getAirSupply());
+             nbttagcompound.putBoolean("OnGround", this.onGround());
+             nbttagcompound.putBoolean("Invulnerable", this.invulnerable);
+@@ -2626,6 +2643,7 @@ public abstract class Entity implements SyncedDataHolder, Nameable, EntityAccess
+             this.setYBodyRot(this.getYRot());
+             this.fallDistance = nbt.getFloat("FallDistance");
+             this.remainingFireTicks = nbt.getShort("Fire");
++            this.setFireTickCounter(nbt.getShort("FireCounter"));
+             if (nbt.contains("Air")) {
+                 this.setAirSupply(nbt.getShort("Air"));
+             }
