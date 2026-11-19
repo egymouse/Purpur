@@ -1,0 +1,206 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: egymouse <93432838+egymouse@users.noreply.github.com>
+Date: Thu, 19 Nov 2026 17:15:22 +0800
+Subject: [PATCH] Prepare for add effect tick counter
+
+
+diff --git a/src/main/java/net/minecraft/network/codec/StreamCodec.java b/src/main/java/net/minecraft/network/codec/StreamCodec.java
+index da47103a38555de8ffa7bd93ba88569ab2967dbc..eb2b8344fbf58eb227b740ddf71bfea98c8f1730 100644
+--- a/src/main/java/net/minecraft/network/codec/StreamCodec.java
++++ b/src/main/java/net/minecraft/network/codec/StreamCodec.java
+@@ -56,7 +56,7 @@ public interface StreamCodec<B, V> extends StreamDecoder<B, V>, StreamEncoder<B,
+         };
+     }
+ 
+-    default <O> StreamCodec<B, O> apply(StreamCodec.CodecOperation<B, V, O> function) {
++    default <O> StreamCodec<B, O> apply(CodecOperation<B, V, O> function) {
+         return function.apply(this);
+     }
+ 
+@@ -299,4 +299,4 @@ public interface StreamCodec<B, V> extends StreamDecoder<B, V>, StreamEncoder<B,
+     public interface CodecOperation<B, S, T> {
+         StreamCodec<B, T> apply(StreamCodec<B, S> codec);
+     }
+-}
++}
+\ No newline at end of file
+diff --git a/src/main/java/net/minecraft/world/effect/MobEffect.java b/src/main/java/net/minecraft/world/effect/MobEffect.java
+index d315df17fc937633a92a46b305c0285f66af3e22..539e75fe0bf24c37d4d750a7063557ff6daf0adb 100644
+--- a/src/main/java/net/minecraft/world/effect/MobEffect.java
++++ b/src/main/java/net/minecraft/world/effect/MobEffect.java
+@@ -3,8 +3,8 @@ package net.minecraft.world.effect;
+ import com.mojang.serialization.Codec;
+ import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+ import java.util.Map;
+-import java.util.Optional;
+ import java.util.Map.Entry;
++import java.util.Optional;
+ import java.util.function.BiConsumer;
+ import java.util.function.Function;
+ import javax.annotation.Nullable;
+@@ -39,7 +39,7 @@ public class MobEffect implements FeatureElement {
+     public static final Codec<Holder<MobEffect>> CODEC = BuiltInRegistries.MOB_EFFECT.holderByNameCodec();
+     public static final StreamCodec<RegistryFriendlyByteBuf, Holder<MobEffect>> STREAM_CODEC = ByteBufCodecs.holderRegistry(Registries.MOB_EFFECT);
+     private static final int AMBIENT_ALPHA = Mth.floor(38.25F);
+-    public final Map<Holder<Attribute>, MobEffect.AttributeTemplate> attributeModifiers = new Object2ObjectOpenHashMap<>();
++    public final Map<Holder<Attribute>, AttributeTemplate> attributeModifiers = new Object2ObjectOpenHashMap<>();
+     private final MobEffectCategory category;
+     private final int color;
+     private final Function<MobEffectInstance, ParticleOptions> particleFactory;
+@@ -123,7 +123,7 @@ public class MobEffect implements FeatureElement {
+     }
+ 
+     public MobEffect addAttributeModifier(Holder<Attribute> attribute, ResourceLocation id, double amount, AttributeModifier.Operation operation) {
+-        this.attributeModifiers.put(attribute, new MobEffect.AttributeTemplate(id, amount, operation));
++        this.attributeModifiers.put(attribute, new AttributeTemplate(id, amount, operation));
+         return this;
+     }
+ 
+@@ -138,7 +138,7 @@ public class MobEffect implements FeatureElement {
+     }
+ 
+     public void removeAttributeModifiers(AttributeMap attributeContainer) {
+-        for (Entry<Holder<Attribute>, MobEffect.AttributeTemplate> entry : this.attributeModifiers.entrySet()) {
++        for (Entry<Holder<Attribute>, AttributeTemplate> entry : this.attributeModifiers.entrySet()) {
+             AttributeInstance attributeInstance = attributeContainer.getInstance(entry.getKey());
+             if (attributeInstance != null) {
+                 attributeInstance.removeModifier(entry.getValue().id());
+@@ -147,7 +147,7 @@ public class MobEffect implements FeatureElement {
+     }
+ 
+     public void addAttributeModifiers(AttributeMap attributeContainer, int amplifier) {
+-        for (Entry<Holder<Attribute>, MobEffect.AttributeTemplate> entry : this.attributeModifiers.entrySet()) {
++        for (Entry<Holder<Attribute>, AttributeTemplate> entry : this.attributeModifiers.entrySet()) {
+             AttributeInstance attributeInstance = attributeContainer.getInstance(entry.getKey());
+             if (attributeInstance != null) {
+                 attributeInstance.removeModifier(entry.getValue().id());
+@@ -184,4 +184,4 @@ public class MobEffect implements FeatureElement {
+             return new AttributeModifier(this.id, this.amount * (double)(amplifier + 1), this.operation);
+         }
+     }
+-}
++}
+\ No newline at end of file
+diff --git a/src/main/java/net/minecraft/world/effect/MobEffectInstance.java b/src/main/java/net/minecraft/world/effect/MobEffectInstance.java
+index 959c0f82a3a7dae801914be5a126c87ac3b99a63..3b44280e1e59a6b5ac4bd9b91805a6b52073bae1 100644
+--- a/src/main/java/net/minecraft/world/effect/MobEffectInstance.java
++++ b/src/main/java/net/minecraft/world/effect/MobEffectInstance.java
+@@ -32,12 +32,12 @@ public class MobEffectInstance implements Comparable<MobEffectInstance> {
+     public static final Codec<MobEffectInstance> CODEC = RecordCodecBuilder.create(
+         instance -> instance.group(
+                     MobEffect.CODEC.fieldOf("id").forGetter(MobEffectInstance::getEffect),
+-                    MobEffectInstance.Details.MAP_CODEC.forGetter(MobEffectInstance::asDetails)
++                    Details.MAP_CODEC.forGetter(MobEffectInstance::asDetails)
+                 )
+                 .apply(instance, MobEffectInstance::new)
+     );
+     public static final StreamCodec<RegistryFriendlyByteBuf, MobEffectInstance> STREAM_CODEC = StreamCodec.composite(
+-        MobEffect.STREAM_CODEC, MobEffectInstance::getEffect, MobEffectInstance.Details.STREAM_CODEC, MobEffectInstance::asDetails, MobEffectInstance::new
++        MobEffect.STREAM_CODEC, MobEffectInstance::getEffect, Details.STREAM_CODEC, MobEffectInstance::asDetails, MobEffectInstance::new
+     );
+     private final Holder<MobEffect> effect;
+     private int duration;
+@@ -47,7 +47,7 @@ public class MobEffectInstance implements Comparable<MobEffectInstance> {
+     private boolean showIcon;
+     @Nullable
+     public MobEffectInstance hiddenEffect;
+-    private final MobEffectInstance.BlendState blendState = new MobEffectInstance.BlendState();
++    private final BlendState blendState = new BlendState();
+ 
+     public MobEffectInstance(Holder<MobEffect> effect) {
+         this(effect, 0, 0);
+@@ -92,7 +92,7 @@ public class MobEffectInstance implements Comparable<MobEffectInstance> {
+         this.setDetailsFrom(instance);
+     }
+ 
+-    private MobEffectInstance(Holder<MobEffect> effect, MobEffectInstance.Details parameters) {
++    private MobEffectInstance(Holder<MobEffect> effect, Details parameters) {
+         this(
+             effect,
+             parameters.duration(),
+@@ -104,8 +104,8 @@ public class MobEffectInstance implements Comparable<MobEffectInstance> {
+         );
+     }
+ 
+-    private MobEffectInstance.Details asDetails() {
+-        return new MobEffectInstance.Details(
++    private Details asDetails() {
++        return new Details(
+             this.getAmplifier(),
+             this.getDuration(),
+             this.isAmbient(),
+@@ -359,7 +359,7 @@ public class MobEffectInstance implements Comparable<MobEffectInstance> {
+             this.factorPreviousFrame = this.factor;
+         }
+ 
+-        public void copyFrom(MobEffectInstance.BlendState fading) {
++        public void copyFrom(BlendState fading) {
+             this.factor = fading.factor;
+             this.factorPreviousFrame = fading.factorPreviousFrame;
+         }
+@@ -397,44 +397,44 @@ public class MobEffectInstance implements Comparable<MobEffectInstance> {
+     }
+ 
+     static record Details(
+-        int amplifier, int duration, boolean ambient, boolean showParticles, boolean showIcon, Optional<MobEffectInstance.Details> hiddenEffect
++        int amplifier, int duration, boolean ambient, boolean showParticles, boolean showIcon, Optional<Details> hiddenEffect
+     ) {
+-        public static final MapCodec<MobEffectInstance.Details> MAP_CODEC = MapCodec.recursive(
++        public static final MapCodec<Details> MAP_CODEC = MapCodec.recursive(
+             "MobEffectInstance.Details",
+             codec -> RecordCodecBuilder.mapCodec(
+                     instance -> instance.group(
+-                                ExtraCodecs.UNSIGNED_BYTE.optionalFieldOf("amplifier", 0).forGetter(MobEffectInstance.Details::amplifier),
+-                                Codec.INT.optionalFieldOf("duration", Integer.valueOf(0)).forGetter(MobEffectInstance.Details::duration),
+-                                Codec.BOOL.optionalFieldOf("ambient", Boolean.valueOf(false)).forGetter(MobEffectInstance.Details::ambient),
+-                                Codec.BOOL.optionalFieldOf("show_particles", Boolean.valueOf(true)).forGetter(MobEffectInstance.Details::showParticles),
++                                ExtraCodecs.UNSIGNED_BYTE.optionalFieldOf("amplifier", 0).forGetter(Details::amplifier),
++                                Codec.INT.optionalFieldOf("duration", Integer.valueOf(0)).forGetter(Details::duration),
++                                Codec.BOOL.optionalFieldOf("ambient", Boolean.valueOf(false)).forGetter(Details::ambient),
++                                Codec.BOOL.optionalFieldOf("show_particles", Boolean.valueOf(true)).forGetter(Details::showParticles),
+                                 Codec.BOOL.optionalFieldOf("show_icon").forGetter(parameters -> Optional.of(parameters.showIcon())),
+-                                codec.optionalFieldOf("hidden_effect").forGetter(MobEffectInstance.Details::hiddenEffect)
++                                codec.optionalFieldOf("hidden_effect").forGetter(Details::hiddenEffect)
+                             )
+-                            .apply(instance, MobEffectInstance.Details::create)
++                            .apply(instance, Details::create)
+                 )
+         );
+-        public static final StreamCodec<ByteBuf, MobEffectInstance.Details> STREAM_CODEC = StreamCodec.recursive(
++        public static final StreamCodec<ByteBuf, Details> STREAM_CODEC = StreamCodec.recursive(
+             packetCodec -> StreamCodec.composite(
+                     ByteBufCodecs.VAR_INT,
+-                    MobEffectInstance.Details::amplifier,
++                    Details::amplifier,
+                     ByteBufCodecs.VAR_INT,
+-                    MobEffectInstance.Details::duration,
++                    Details::duration,
+                     ByteBufCodecs.BOOL,
+-                    MobEffectInstance.Details::ambient,
++                    Details::ambient,
+                     ByteBufCodecs.BOOL,
+-                    MobEffectInstance.Details::showParticles,
++                    Details::showParticles,
+                     ByteBufCodecs.BOOL,
+-                    MobEffectInstance.Details::showIcon,
++                    Details::showIcon,
+                     packetCodec.apply(ByteBufCodecs::optional),
+-                    MobEffectInstance.Details::hiddenEffect,
+-                    MobEffectInstance.Details::new
++                    Details::hiddenEffect,
++                    Details::new
+                 )
+         );
+ 
+-        private static MobEffectInstance.Details create(
+-            int amplifier, int duration, boolean ambient, boolean showParticles, Optional<Boolean> showIcon, Optional<MobEffectInstance.Details> hiddenEffect
++        private static Details create(
++            int amplifier, int duration, boolean ambient, boolean showParticles, Optional<Boolean> showIcon, Optional<Details> hiddenEffect
+         ) {
+-            return new MobEffectInstance.Details(amplifier, duration, ambient, showParticles, showIcon.orElse(showParticles), hiddenEffect);
++            return new Details(amplifier, duration, ambient, showParticles, showIcon.orElse(showParticles), hiddenEffect);
+         }
+     }
+-}
++}
+\ No newline at end of file
