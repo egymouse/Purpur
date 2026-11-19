@@ -85,6 +85,24 @@ paperweight {
     }
 }
 
+// Prism start - make "new file" patches for vanilla classes applyable
+// rebuildPatches runs `git format-patch base..HEAD`. A vanilla class that is new to the
+// tree is emitted as a "new file" patch, but McDev.importMcDev() imports the vanilla file
+// first, so `git am` fails with "both added". This post-step rewrites such a patch as a
+// modification (vanilla -> new content); after the first apply `base` contains the file and
+// later runs already produce modification patches, so the step becomes a no-op.
+val prismNormalizeServerPatches = tasks.register<Exec>("prismNormalizeServerPatches") {
+    group = "paperweight"
+    description = "Convert new-file patches targeting vanilla classes into modification patches"
+    workingDir = rootProject.layout.projectDirectory.asFile
+    commandLine(
+        "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
+        "-File", rootProject.layout.projectDirectory.file("scripts/pw-normalize-patches.ps1").asFile.absolutePath
+    )
+}
+tasks.named("rebuildServerPatches") { finalizedBy(prismNormalizeServerPatches) }
+// Prism end
+
 tasks.generateDevelopmentBundle {
     apiCoordinates = "org.purpurmc.purpur:purpur-api"
     libraryRepositories = listOf(
